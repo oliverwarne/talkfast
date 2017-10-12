@@ -1,0 +1,8 @@
+[package]
+name = "talkfast"
+version = "0.1.0"
+authors = ["oliver <oliverswarne@gmail.com>"]
+
+[dependencies]
+ring = "0.10.0"
+text_io = "0.1.6"
