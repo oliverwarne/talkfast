@@ -5,6 +5,7 @@ use ring::aead::*;
 use ring::pbkdf2::*;
 use ring::rand::SystemRandom;
 
+#[derive(Debug, Clone)]
 struct DecryptionData {
     encrypted: Vec<u8>, // The encrypted data
     verified : Vec<u8>, // verified message (username of receiver)
@@ -12,7 +13,7 @@ struct DecryptionData {
     key      : [u8; 32],
 }
 
-
+#[derive(Debug, Clone)]
 struct EncryptionData {
     /*
      * This is the data to be passed to the encryption algorithm
@@ -30,8 +31,32 @@ struct message {
     time:    f32,
 }
 
-
 fn main() {
+    
+    
+    let message  = "yeahalright".to_owned().into_bytes();
+    let password = "knobby".to_owned().into_bytes();
+    let salt     = "wot".to_owned().into_bytes();
+    let verified = "karl".to_owned().into_bytes();
+
+    let nonce: Vec<u8> = vec![0;12];
+
+    let mut key: [u8; 32] = [0; 32] ;
+    derive(&HMAC_SHA256, 100, &salt, &password[..], &mut key);
+
+    let encrypt = EncryptionData {
+                    message : message,
+                    salt    : salt,
+                    key     : key,
+                    password: password,
+                    verified: verified,
+                    nonce   : nonce,
+    };
+    test_io(encrypt);
+
+}
+
+fn wmain() {
 
     /* 
      * This block prepares the message to be encrypted. 
@@ -182,45 +207,49 @@ fn prompt_user() -> EncryptionData {
 
 fn encrypt(data: EncryptionData) -> Vec<u8> {
 
-    let mut in_out: Vec<u8> = Vec::new();
+    let mut in_out: Vec<u8> = data.message.clone();
 
-    for i in data.message {
-        in_out.push(i);
-    }
-
+    let nonce = vec![0; 12];
+    let verified: Vec<u8> = "oy".to_owned().into_bytes();
 
     // this adds a bit of extra 0's onto the input... not 100% sure why
     
     for _ in 0..CHACHA20_POLY1305.tag_len() {
         in_out.push(0);
     }
-
+    println!("sela_key");
     let sealing_key = SealingKey::new(&CHACHA20_POLY1305, &data.key).unwrap();
-
+println!("encrypt");
     let encrypted_size  = seal_in_place(&sealing_key, &data.nonce, &data.verified, 
-                                  &mut in_out, CHACHA20_POLY1305.tag_len())
-                                  .unwrap();
+                                  &mut in_out, CHACHA20_POLY1305.tag_len()).unwrap();
 
     return in_out;
 
 }
 
 fn decrypt(data: DecryptionData) -> Vec<u8> {
-
+println!("encrypt_key");
     let opening_key = OpeningKey::new(&CHACHA20_POLY1305, &data.key).unwrap();
-
     let mut in_out = data.encrypted.clone();
-
+println!("decrypt");
     let decrypted_data = open_in_place(&opening_key, &data.nonce, &data.verified, 0, 
                                        &mut in_out).unwrap();
 
     return decrypted_data.to_vec();
 
-
-
 }
 
 
-fn compare_io(data: EncryptionData, encrypted: Vec<u8>) {
-    assert_eq!(data.message, encrypted);
+fn test_io(data: EncryptionData) {
+    let encrypted = encrypt(data.clone());
+    let decrypt_data = DecryptionData {
+                        encrypted: encrypted,
+                        verified : data.verified,
+                        nonce    : data.nonce,
+                        key      : data.key,
+    };
+    let decrypted = decrypt(decrypt_data);
+
+    assert_eq!(data.message, decrypted);
+    println!("issa equal");
 }
