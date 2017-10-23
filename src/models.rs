@@ -7,7 +7,7 @@ pub struct NewUser<'a> {
     pub crypto_key: &'a str,
 }
 
-#[derive(Queryable)]
+#[derive(Queryable,Debug,Clone)]
 pub struct User {
     pub id: i32,
     pub name: String,
